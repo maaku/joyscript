@@ -1,0 +1,6 @@
+# Rust
+Cargo.lock
+target/
+
+# macOS
+.DS_Store
