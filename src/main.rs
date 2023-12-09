@@ -11,13 +11,21 @@ const HELP: &str = r#"Usage: hello [options]
 Options:
     -h, --help      Print this help information"#;
 
+enum Task {
+    /// The default, which is to do nothing.
+    Default,
+    /// Print the help text.
+    Help,
+}
+
 struct CmdLine {
     /// The path to the binary being executed, including the executable file.
     #[allow(dead_code)]
     binpath: std::path::PathBuf,
     /// The name of the executable, without the leading path or file extension.
     prog: String,
-    // No command line options yet.
+    /// The task to perform.
+    task: Task,
 }
 
 impl CmdLine {
@@ -40,16 +48,23 @@ impl CmdLine {
         // Parse command line arguments using the pico-args crate.
         let mut pargs = pico_args::Arguments::from_env();
 
-        // Help has a higher priority than any other option, and should be
-        // handled immediately.
+        // Help has a higher priority than any other option, and further
+        // command-line processing is terminated.
         if pargs.contains(["-h", "--help"]) {
-            println!("{}", HELP);
-            std::process::exit(0);
+            return Self {
+                binpath,
+                prog,
+                task: Task::Help,
+            };
         }
 
         // Create a new CmdLine struct, and populate it with the parsed
         // command line arguments & options.
-        let args = Self { binpath, prog };
+        let args = Self {
+            binpath,
+            prog,
+            task: Task::Default,
+        };
 
         // Parse the remaining options.
         let remaining = pargs.finish();
@@ -81,9 +96,17 @@ impl CmdLine {
 }
 
 fn main() {
-    let _ = CmdLine::from_env();
+    let cmdline = CmdLine::from_env();
 
-    println!("Nothing to do.");
+    match cmdline.task {
+        Task::Help => {
+            println!("{}", HELP);
+        }
+        Task::Default => {
+            // Do nothing.
+            println!("Nothing to do.");
+        }
+    }
 }
 
 // End of File
