@@ -2,10 +2,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use pico_args;
+use rustyline;
 
 const HELP: &str = r#"Usage: hello [options]
 
@@ -97,14 +97,18 @@ impl CmdLine {
 }
 
 fn shell(cmdline: CmdLine) {
-    loop {
-        // Display the prompt.
-        print!(">>> ");
-        io::stdout().flush().unwrap();
+    // Create a readline interface.
+    let mut rl = rustyline::DefaultEditor::new().unwrap_or_else(|err| {
+        eprintln!(
+            "{}: error: unable to create readline interface: {}",
+            cmdline.prog, err
+        );
+        std::process::exit(1);
+    });
 
-        // Read a line of input from the user.
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap_or_else(|err| {
+    loop {
+        // Read a line from the user.
+        let input = rl.readline(">>> ").unwrap_or_else(|err| {
             eprintln!(
                 "{}: error: unable to read from stdin: {}",
                 cmdline.prog, err

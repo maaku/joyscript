@@ -12,3 +12,4 @@ pico-args = { version = "0.5", features = [
     "eq-separator",
     "short-space-opt"
 ]}
+rustyline = "13.0.0"
