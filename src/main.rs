@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use pico_args;
@@ -12,8 +13,8 @@ Options:
     -h, --help      Print this help information"#;
 
 enum Task {
-    /// The default, which is to do nothing.
-    Default,
+    /// The default, which is an REPL shell.
+    Shell,
     /// Print the help text.
     Help,
 }
@@ -63,7 +64,7 @@ impl CmdLine {
         let args = Self {
             binpath,
             prog,
-            task: Task::Default,
+            task: Task::Shell,
         };
 
         // Parse the remaining options.
@@ -95,6 +96,29 @@ impl CmdLine {
     }
 }
 
+fn shell(cmdline: CmdLine) {
+    loop {
+        // Display the prompt.
+        print!(">>> ");
+        io::stdout().flush().unwrap();
+
+        // Read a line of input from the user.
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap_or_else(|err| {
+            eprintln!(
+                "{}: error: unable to read from stdin: {}",
+                cmdline.prog, err
+            );
+            std::process::exit(1);
+        });
+
+        // If the user entered a blank line, then exit the REPL.
+        if input.trim().is_empty() {
+            break;
+        }
+    }
+}
+
 fn main() {
     let cmdline = CmdLine::from_env();
 
@@ -102,9 +126,8 @@ fn main() {
         Task::Help => {
             println!("{}", HELP);
         }
-        Task::Default => {
-            // Do nothing.
-            println!("Nothing to do.");
+        Task::Shell => {
+            shell(cmdline);
         }
     }
 }
