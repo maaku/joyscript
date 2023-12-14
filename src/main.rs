@@ -5,7 +5,9 @@
 use std::path::{Path, PathBuf};
 
 use pico_args;
+use regex::Regex;
 use rustyline;
+use unicode_segmentation::UnicodeSegmentation;
 
 const HELP: &str = r#"Usage: hello [options]
 
@@ -96,7 +98,69 @@ impl CmdLine {
     }
 }
 
+enum Token {
+    /// A symbol.
+    Identifier(String),
+    /// A symbol.
+    Symbol(String),
+}
+
+fn tokenize(input: &str) -> Vec<Token> {
+    let mut tokens = Vec::new();
+
+    let xid_start = Regex::new(r"(\p{XID_Start}|\p{Emoji})(\p{XID_Continue}|\p{Emoji})*").unwrap();
+    let xid_continue = Regex::new(r"(\p{XID_Continue}|\p{Emoji})+").unwrap();
+    let pattern_syntax = Regex::new(r"\p{Pattern_Syntax}+").unwrap();
+    let pattern_white_space = Regex::new(r"\p{Pattern_White_Space}+").unwrap();
+
+    let mut graphemes = UnicodeSegmentation::graphemes(input, true).peekable();
+
+    while let Some(ch) = graphemes.next() {
+        // Skip whitespace.
+        if pattern_white_space.is_match(ch) {
+            continue;
+        }
+
+        // Identifiers according to UAX#31: \p{XID_Start}\p{XID_Continue}*
+        if xid_start.is_match(ch) {
+            let mut identifier = ch.to_owned();
+            while let Some(ch) = graphemes.peek() {
+                if xid_continue.is_match(ch) {
+                    identifier.push_str(ch);
+                    graphemes.next();
+                } else {
+                    break;
+                }
+            }
+            tokens.push(Token::Identifier(identifier));
+            continue;
+        }
+
+        // Symbols according to UAX#31: \p{Pattern_Syntax}*
+        if pattern_syntax.is_match(ch) {
+            let mut symbol = ch.to_owned();
+            while let Some(ch) = graphemes.peek() {
+                if pattern_syntax.is_match(ch) {
+                    symbol.push_str(ch);
+                    graphemes.next();
+                } else {
+                    break;
+                }
+            }
+            tokens.push(Token::Symbol(symbol));
+            continue;
+        }
+
+        println!("unrecognized grapheme: {}", ch);
+    }
+
+    tokens
+}
+
 fn shell(cmdline: CmdLine) {
+    // The current stack.
+    let mut stack = Vec::new();
+
     // Create a readline interface.
     let mut rl = rustyline::DefaultEditor::new().unwrap_or_else(|err| {
         eprintln!(
@@ -120,6 +184,19 @@ fn shell(cmdline: CmdLine) {
         if input.trim().is_empty() {
             break;
         }
+
+        // Tokenize the input and append to the stack.
+        stack.append(&mut tokenize(&input));
+
+        // Output the current stack.
+        for token in stack.iter() {
+            match token {
+                Token::Identifier(s) => print!("Identifier({}) ", s),
+                Token::Symbol(s) => print!("Symbol({}) ", s),
+            }
+        }
+        // Finish with a newline.
+        println!("");
     }
 }
 
