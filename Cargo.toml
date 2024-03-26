@@ -12,6 +12,6 @@ pico-args = { version = "0.5", features = [
     "eq-separator",
     "short-space-opt"
 ]}
-regex = "1.10.2"
-rustyline = "13.0.0"
-unicode-segmentation = "1.10.1"
+regex = "1.10"
+rustyline = "14"
+unicode-segmentation = "1.11"
